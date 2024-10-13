@@ -39,7 +39,7 @@ namespace Blog.Web.Controllers
                 Descricao = comentario.Descricao,
                 DataPublicacao = comentario.DataPublicacao,
                 PostId = comentario.PostId
-                
+
             };
 
             return View(comentarioViewModel);
@@ -54,13 +54,17 @@ namespace Blog.Web.Controllers
                 return NotFound();
             }
 
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (comentarioViewModel.AutorId != userId && !User.IsInRole("Admin"))
+            {
+                return Forbid();
+            }
+
             if (ModelState.IsValid)
             {
                 try
                 {
                     var novoComentario = await _context.Comentarios.FindAsync(comentarioViewModel.Id);
-
-                    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
                     if (novoComentario == null)
                     {
@@ -86,7 +90,7 @@ namespace Blog.Web.Controllers
                 }
                 return RedirectToAction("Details", "Posts", new { id = comentarioViewModel.PostId });
             }
-           
+
             return View(comentarioViewModel);
         }
 
@@ -120,6 +124,12 @@ namespace Blog.Web.Controllers
         {
             var comentario = await _context.Comentarios.FindAsync(id);
             var postId = comentario.PostId;
+
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (comentario.AutorId != userId && !User.IsInRole("Admin"))
+            {
+                return Forbid();
+            }
 
             if (comentario != null)
             {

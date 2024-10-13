@@ -61,7 +61,7 @@ namespace Blog.Web.Controllers
 
 
         public IActionResult Create()
-        {           
+        {
             return View();
         }
 
@@ -85,18 +85,19 @@ namespace Blog.Web.Controllers
                 _context.Add(novoPost);
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
-            }            
+            }
             return View(postViewModel);
         }
-        
+
         public async Task<IActionResult> Edit(int id)
         {
 
-            var post = await _context.Posts.FindAsync(id);            
+            var post = await _context.Posts.FindAsync(id);
             if (post == null)
             {
                 return NotFound();
             }
+
 
             var postViewModel = new PostViewModel
             {
@@ -104,7 +105,7 @@ namespace Blog.Web.Controllers
                 Titulo = post.Titulo,
                 Descricao = post.Descricao
             };
-            
+
             return View(postViewModel);
         }
 
@@ -115,6 +116,12 @@ namespace Blog.Web.Controllers
             if (id != postViewModel.Id)
             {
                 return NotFound();
+            }
+
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (postViewModel.AutorId != userId && !User.IsInRole("Admin"))
+            {
+                return Forbid();
             }
 
             if (ModelState.IsValid)
@@ -147,7 +154,7 @@ namespace Blog.Web.Controllers
             }
             return View(postViewModel);
         }
-       
+
         public async Task<IActionResult> Delete(int? id)
         {
             if (id == null)
@@ -183,6 +190,12 @@ namespace Blog.Web.Controllers
             if (post != null)
             {
                 _context.Posts.Remove(post);
+            }
+
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (post.AutorId != userId && !User.IsInRole("Admin"))
+            {
+                return Forbid();
             }
 
             await _context.SaveChangesAsync();

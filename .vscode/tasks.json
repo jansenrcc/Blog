@@ -1,19 +1,25 @@
 {
     "version": "2.0.0",
     "tasks": [
-        {
-            "label": "build",
-            "command": "dotnet",
-            "type": "process",
-            "args": [
-                "build",
-                "${workspaceFolder}/src/Blog.Web/Blog.Web.csproj"
-            ],
-            "problemMatcher": "$msCompile",
-            "group": {
-                "kind": "build",
-                "isDefault": true
-            }
-        }
+      {
+        "label": "build Blog.Web",
+        "command": "dotnet",
+        "type": "process",
+        "args": [
+          "build",
+          "${workspaceFolder}/src/Blog.Web/Blog.Web.csproj"
+        ],
+        "problemMatcher": "$msCompile"
+      },
+      {
+        "label": "build Blog.Api",
+        "command": "dotnet",
+        "type": "process",
+        "args": [
+          "build",
+          "${workspaceFolder}/src/Blog.Api/Blog.Api.csproj"
+        ],
+        "problemMatcher": "$msCompile"
+      }
     ]
-}
+  }
