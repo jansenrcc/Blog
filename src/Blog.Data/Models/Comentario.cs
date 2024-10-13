@@ -6,9 +6,7 @@ namespace Blog.Data.Models;
 
 public class Comentario
 {
-    public int Id { get; set; }
-
-    [Required(ErrorMessage = "A descrição é obrigatória")]
+    public int Id { get; set; }    
     public string Descricao { get; set; }
     public string AutorId { get; set; }
     public IdentityUser Autor { get; set; }

@@ -1,4 +1,3 @@
-using System;
 using Blog.Data.Models;
 using Microsoft.EntityFrameworkCore;
 

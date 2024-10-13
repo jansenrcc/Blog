@@ -31,6 +31,11 @@ public class PostsController : ControllerBase
     [ProducesDefaultResponseType]
     public async Task<ActionResult<IEnumerable<PostListDto>>> GetPosts(int pageNumber = 1, int pageSize = 10)
     {
+        if (_context.Posts == null)
+        {
+            return Problem("Erro ao obter os posts, contate o suporte!");
+        }
+
         if (pageNumber < 1 || pageSize < 1)
         {
             return BadRequest("PageNumber e PageSize precisam ser maior que 0.");
@@ -67,7 +72,7 @@ public class PostsController : ControllerBase
     {
         if (_context.Posts == null)
         {
-            return NotFound();
+            return Problem("Erro ao obter o post, contate o suporte!");
         }
 
         var post = await _context.Posts
@@ -116,7 +121,7 @@ public class PostsController : ControllerBase
     {
         if (_context.Posts == null)
         {
-            return Problem("Erro ao criar um produto, contate o suporte!");
+            return Problem("Erro ao criar um post, contate o suporte!");
         }
 
         if (!ModelState.IsValid)
@@ -165,6 +170,10 @@ public class PostsController : ControllerBase
     [ProducesDefaultResponseType]
     public async Task<IActionResult> PutPost(int id, PostCreateUpdateDto postCreateUpdateDto)
     {
+        if (_context.Posts == null)
+        {
+            return Problem("Erro ao atualizar o post, contate o suporte!");
+        }
         var post = await _context.Posts.FindAsync(id);
 
         if (id != post.Id) return BadRequest();
@@ -208,6 +217,10 @@ public class PostsController : ControllerBase
     {
         if (_context.Posts == null)
         {
+            return Problem("Erro ao deletar um post, contate o suporte!");
+        }
+        if (_context.Posts == null)
+        {
             return NotFound();
         }
 
@@ -237,6 +250,10 @@ public class PostsController : ControllerBase
     [ProducesDefaultResponseType]
     public async Task<ActionResult> AddCommentOnPost(int id, CommentCreateUpdateDto CommentCreateUpdateDto)
     {
+        if (_context.Posts == null)
+        {
+            return Problem("Erro ao criar comentário em um post, contate o suporte!");
+        }
         var post = await _context.Posts.FindAsync(id);
 
         if (ModelState.IsValid)
