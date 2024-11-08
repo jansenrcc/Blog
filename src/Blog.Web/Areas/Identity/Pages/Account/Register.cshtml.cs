@@ -62,7 +62,7 @@ namespace Blog.Web.Areas.Identity.Pages.Account
             if (ModelState.IsValid)
             {
                 // Desconstrói a tupla para obter o resultado e o usuário criado
-                var (result, user) = await _userService.RegisterUserAsync(Input);
+                var (result, user, token) = await _userService.RegisterUserAsync(Input);
 
                 if (result.Succeeded)
                 {
