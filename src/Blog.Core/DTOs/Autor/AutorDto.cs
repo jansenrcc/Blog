@@ -1,6 +1,6 @@
 using System;
 
-namespace Blog.Api.DTOs.Autor;
+namespace Blog.Core.DTOs.Autor;
 
 public class AutorDto
 {

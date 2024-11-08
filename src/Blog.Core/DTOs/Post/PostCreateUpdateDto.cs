@@ -1,7 +1,7 @@
 using System;
 using System.ComponentModel.DataAnnotations;
 
-namespace Blog.Api.DTOs.Posts;
+namespace Blog.Core.DTOs.Post;
 
 public class PostCreateUpdateDto
 {

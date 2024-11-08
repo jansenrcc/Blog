@@ -1,4 +1,4 @@
-@model Blog.Web.ViewModels.ComentarioViewModel
+@model Blog.Core.DTOs.Comentario.CommentDetailDto
 
 @{
     ViewData["Title"] = "Edit";
@@ -15,9 +15,9 @@
             <input type="hidden" asp-for="Id" />
             <input type="hidden" asp-for="PostId" />
             <div class="form-group">
-                <label asp-for="Descricao" class="control-label"></label>
-                <input asp-for="Descricao" class="form-control" />
-                <span asp-validation-for="Descricao" class="text-danger"></span>
+                <label asp-for="Comentario" class="control-label"></label>
+                <input asp-for="Comentario" class="form-control" />
+                <span asp-validation-for="Comentario" class="text-danger"></span>
             </div>
 
             <div class="form-group mb-2 mt-2">

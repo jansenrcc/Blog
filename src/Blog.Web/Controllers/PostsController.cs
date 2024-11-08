@@ -1,65 +1,68 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Rendering;
-using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
-using Blog.Data.Data;
-using Blog.Data.Models;
-using Blog.Web.ViewModels;
+using Blog.Core.Interfaces;
+using Blog.Core.DTOs.Post;
+using Blog.Core.DTOs.Comentario;
 
 namespace Blog.Web.Controllers
 {
     [Authorize]
     public class PostsController : Controller
     {
-        private readonly ApplicationDbContext _context;
 
-        public PostsController(ApplicationDbContext context)
+        private readonly IPostService _postService;
+        private readonly ILogger<PostsController> _logger;
+
+        public PostsController(IPostService postService, ILogger<PostsController> logger)
         {
-            _context = context;
+            _postService = postService;
+            _logger = logger;
         }
         [AllowAnonymous]
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(int pageNumber = 1, int pageSize = 10)
         {
-            var posts = await _context.Posts.Include(p => p.Autor).ToListAsync();
-            var postViewModels = posts.Select(post => new PostViewModel
+            try
             {
-                Id = post.Id,
-                Titulo = post.Titulo,
-                Autor = post.Autor,
-                DataPublicacao = post.DataPublicacao
-            }).ToList();
+                var model = await _postService.GetAllPostsAsync(pageNumber, pageSize);
+                if (model == null || !model.Any())
+                {
+                    ViewBag.Message = "Nenhum post encontrado.";
+                }
+                return View(model);
 
-            return View(postViewModels);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erro ao obter a lista de posts"); 
+                return View("Error");
+            }
         }
         [AllowAnonymous]
-        public async Task<IActionResult> Details(int? id)
+        public async Task<IActionResult> Details(int id)
         {
-            if (id == null)
+            if (id <= 0)
             {
-                return NotFound();
+                _logger.LogWarning("Tentativa de acesso com um ID inválido: {Id}", id);
+                return BadRequest("ID inválido.");
             }
-
-            var post = await _context.Posts
-                .Include(p => p.Autor)
-                .Include(c => c.Comentarios).ThenInclude(p => p.Autor)
-                .FirstOrDefaultAsync(m => m.Id == id);
-            if (post == null)
+            try
             {
-                return NotFound();
+                var model = await _postService.GetPostAsync(id);
+                if (model == null)
+                {
+                    _logger.LogInformation("Post com ID {Id} não encontrado.", id);
+                    return NotFound("O post solicitado não foi encontrado.");
+                }
+
+                return View(model);
             }
-
-            var postViewModel = new PostViewModel
+            catch (Exception ex)
             {
-                Id = post.Id,
-                Descricao = post.Descricao,
-                Comentarios = post.Comentarios
-            };
-
-            return View(postViewModel);
+                _logger.LogError(ex, "Erro ao tentar obter detalhes do post com ID {Id}.", id);
+                return View("Error");
+            }
         }
-
-
         public IActionResult Create()
         {
             return View();
@@ -67,174 +70,139 @@ namespace Blog.Web.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(PostViewModel postViewModel)
+        public async Task<IActionResult> Create(PostCreateUpdateDto postCreateDto)
         {
-            if (ModelState.IsValid)
+            if (!ModelState.IsValid)
             {
-                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                return View(postCreateDto);
+            }
 
-                var novoPost = new Post
-                {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+            {
+                _logger.LogWarning("User ID não encontrado ao tentar criar um post.");
+                return Unauthorized("Usuário não autenticado.");
+            }
 
-                    Descricao = postViewModel.Descricao,
-                    AutorId = userId,
-                    Titulo = postViewModel.Titulo,
-                    DataPublicacao = DateTime.Now
-
-                };
-                _context.Add(novoPost);
-                await _context.SaveChangesAsync();
+            try
+            {
+                var model = await _postService.CreatePostAsync(postCreateDto, userId);
                 return RedirectToAction(nameof(Index));
             }
-            return View(postViewModel);
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erro ao criar o post.");
+                return View("Error");
+            }
         }
 
         public async Task<IActionResult> Edit(int id)
         {
 
-            var post = await _context.Posts.FindAsync(id);
-            if (post == null)
+            var model = await _postService.GetPostAsync(id);
+            if (model == null)
             {
                 return NotFound();
             }
-
-
-            var postViewModel = new PostViewModel
-            {
-                Id = post.Id,
-                Titulo = post.Titulo,
-                Descricao = post.Descricao
-            };
-
-            return View(postViewModel);
+            return View(model);
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, PostViewModel postViewModel)
+        public async Task<IActionResult> Edit(int id, PostCreateUpdateDto postUpdateDto, string authorId)
         {
-            if (id != postViewModel.Id)
-            {
-                return NotFound();
-            }
-
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (postViewModel.AutorId != userId && !User.IsInRole("Admin"))
+            var isAdmin = User.IsInRole("Admin");
+
+            if (!isAdmin && authorId != userId)
             {
                 return Forbid();
             }
 
-            if (ModelState.IsValid)
+            if (!ModelState.IsValid)
             {
-                var postExistente = await _context.Posts.FindAsync(id);
-                if (postExistente == null)
-                {
-                    return NotFound();
-                }
-                postExistente.Titulo = postViewModel.Titulo;
-                postExistente.Descricao = postViewModel.Descricao;
+                return View(postUpdateDto);
+            }
 
-                try
-                {
-                    _context.Update(postExistente);
-                    await _context.SaveChangesAsync();
-                }
-                catch (DbUpdateConcurrencyException)
-                {
-                    if (!PostExists(postViewModel.Id))
-                    {
-                        return NotFound();
-                    }
-                    else
-                    {
-                        throw;
-                    }
-                }
+            try
+            {
+                await _postService.UpdatePostAsync(postUpdateDto, userId, id);
                 return RedirectToAction(nameof(Index));
             }
-            return View(postViewModel);
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erro ao atualizar o post com ID {Id}.", id);
+                return View("Error");
+            }
         }
 
-        public async Task<IActionResult> Delete(int? id)
+        public async Task<IActionResult> Delete(int id)
         {
-            if (id == null)
+            var model = await _postService.GetPostAsync(id);
+            if (model == null)
             {
                 return NotFound();
             }
-
-            var post = await _context.Posts
-                .Include(p => p.Autor)
-                .FirstOrDefaultAsync(m => m.Id == id);
-            if (post == null)
-            {
-                return NotFound();
-            }
-
-            var postViewModel = new PostViewModel
-            {
-                Id = post.Id,
-                Descricao = post.Descricao,
-                Titulo = post.Titulo,
-                DataPublicacao = post.DataPublicacao
-            };
-
-            return View(postViewModel);
+            return View(model);
         }
-
 
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> DeleteConfirmed(int id)
+        public async Task<IActionResult> DeleteConfirmed(int id, string authorId)
         {
-            var post = await _context.Posts.FindAsync(id);
-            if (post != null)
-            {
-                _context.Posts.Remove(post);
-            }
-
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (post.AutorId != userId && !User.IsInRole("Admin"))
+            var isAdmin = User.IsInRole("Admin");
+
+            if (!isAdmin && authorId != userId)
             {
                 return Forbid();
             }
 
-            await _context.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
+            try
+            {
+                await _postService.DeletePostAsync(id);
+                return RedirectToAction(nameof(Index));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erro ao excluir o post com ID {Id}.", id);
+                return View("Error");
+            }
         }
 
         [HttpPost]
-        public async Task<IActionResult> AddComment(int id, string texto)
+        public async Task<IActionResult> AddComment(int id, CommentCreateUpdateDto commentCreateDto)
         {
-            var post = await _context.Posts.FindAsync(id);
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            if (ModelState.IsValid)
+            if (string.IsNullOrEmpty(userId))
             {
-
-                if (post == null)
-                {
-                    return NotFound();
-                }
-
-                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-                var comentario = new Comentario
-                {
-                    Descricao = texto,
-                    PostId = id,
-                    AutorId = userId,
-                    DataPublicacao = DateTime.Now
-                };
-
-                _context.Comentarios.Add(comentario);
-                await _context.SaveChangesAsync();
+                _logger.LogWarning("User ID não encontrado ao tentar adicionar um comentário.");
+                return Unauthorized("Usuário não autenticado.");
             }
-            return RedirectToAction("Details", new { id = post.Id });
+
+            if (!ModelState.IsValid)
+            {
+                return View(commentCreateDto);
+            }
+
+            try
+            {
+                var result = await _postService.AddCommentOnPostAsync(id, userId, commentCreateDto);
+                if (result == null)
+                {
+                    return NotFound("Post não encontrado para adicionar o comentário.");
+                }
+                return RedirectToAction("Details", new { id });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erro ao adicionar comentário ao post com ID {Id}.", id);
+                return View("Error");
+            }
 
         }
-        private bool PostExists(int id)
-        {
-            return _context.Posts.Any(e => e.Id == id);
-        }
+
     }
 
 }

@@ -6,12 +6,17 @@ namespace Blog.Data.Models;
 
 public class Comentario
 {
-    public int Id { get; set; }    
+    public int Id { get; set; }
     public string Descricao { get; set; }
-    public string AutorId { get; set; }
-    public IdentityUser Autor { get; set; }
-    public int PostId { get; set; }
-    public Post Post { get; set; }
     public DateTime DataPublicacao { get; set; }
+
+    // FKs
+    public string AutorId { get; set; }
+    public int PostId { get; set; }
+
+    //Propriedades de navegação.
+    public Autor Autor { get; set; }
+    public Post Post { get; set; }
+
 
 }

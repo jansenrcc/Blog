@@ -1,9 +1,8 @@
 using System;
 
-namespace Blog.Api.DTOs.Comentarios;
+namespace Blog.Core.DTOs.Comentario;
 
 public class CommentCreateUpdateDto
 {
     public string Comentario { get; set; }
-
 }

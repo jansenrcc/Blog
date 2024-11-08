@@ -1,8 +1,8 @@
 using System;
-using Blog.Api.DTOs.Autor;
-using Blog.Api.DTOs.Comentarios;
+using Blog.Core.DTOs.Autor;
+using Blog.Core.DTOs.Comentario;
 
-namespace Blog.Api.DTOs.Posts;
+namespace Blog.Core.DTOs.Post;
 
 public class PostDetailDto
 {
@@ -11,5 +11,6 @@ public class PostDetailDto
     public string Descricao { get; set; }
     public DateTime DataPublicacao { get; set; }
     public AutorDto Autor { get; set; }
-     public List<CommentDetailDto> Comentarios { get; set; } = new List<CommentDetailDto>();
+    public List<CommentDetailDto> Comentarios { get; set; } = new List<CommentDetailDto>();
+
 }

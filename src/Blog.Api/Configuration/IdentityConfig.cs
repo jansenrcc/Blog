@@ -1,6 +1,5 @@
 using System.Text;
-using Blog.Api.DTOs;
-using Blog.Api.DTOs.Auth;
+using Blog.Core.DTOs.Auth;
 using Blog.Data.Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;

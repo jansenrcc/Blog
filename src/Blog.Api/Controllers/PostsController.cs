@@ -1,13 +1,10 @@
-using Blog.Data.Data;
-using Blog.Data.Models;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
-using Blog.Api.DTOs.Posts;
-using Blog.Api.DTOs.Autor;
-using Blog.Api.DTOs.Comentarios;
 using Swashbuckle.AspNetCore.Annotations;
 using System.Security.Claims;
+using Blog.Core.DTOs.Post;
+using Blog.Core.Interfaces;
+using Blog.Core.DTOs.Comentario;
 
 namespace Blog.Api.Controllers;
 
@@ -17,11 +14,13 @@ namespace Blog.Api.Controllers;
 
 public class PostsController : ControllerBase
 {
-    private readonly ApplicationDbContext _context;
+    private readonly IPostService _postService;
+    private readonly ILogger<PostsController> _logger;
 
-    public PostsController(ApplicationDbContext context)
+    public PostsController(IPostService postService, ILogger<PostsController> logger)
     {
-        _context = context;
+        _postService = postService;
+        _logger = logger;
     }
 
     [HttpGet]
@@ -31,36 +30,21 @@ public class PostsController : ControllerBase
     [ProducesDefaultResponseType]
     public async Task<ActionResult<IEnumerable<PostListDto>>> GetPosts(int pageNumber = 1, int pageSize = 10)
     {
-        if (_context.Posts == null)
+        try
         {
-            return Problem("Erro ao obter os posts, contate o suporte!");
-        }
-
-        if (pageNumber < 1 || pageSize < 1)
-        {
-            return BadRequest("PageNumber e PageSize precisam ser maior que 0.");
-        }
-
-        var posts = await _context.Posts
-         .Include(p => p.Autor)
-         .Skip((pageNumber - 1) * pageSize)
-         .Take(pageSize)
-         .ToListAsync();
-
-        var postListDto = posts.Select(post => new PostListDto
-        {
-            Id = post.Id,
-            Titulo = post.Titulo,
-            Descricao = post.Descricao,
-            DataPublicacao = post.DataPublicacao,
-            Autor = new AutorDto
+            var result = await _postService.GetAllPostsAsync(pageNumber, pageSize);
+            if (result == null || !result.Any())
             {
-                Id = post.Autor.Id,
-                Email = post.Autor.Email
+                return NotFound("Nenhum post encontrado.");
             }
-        }).ToList();
 
-        return Ok(postListDto);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao obter a lista de posts");
+            return BadRequest("Ocorreu um erro ao processar a solicitação.");
+        }
     }
 
     [HttpGet("{id:int}")]
@@ -70,96 +54,55 @@ public class PostsController : ControllerBase
     [ProducesDefaultResponseType]
     public async Task<ActionResult<PostDetailDto>> GetPost(int id)
     {
-        if (_context.Posts == null)
+        if (id <= 0)
         {
-            return Problem("Erro ao obter o post, contate o suporte!");
+            _logger.LogWarning("Tentativa de acesso com um ID inválido: {Id}", id);
+            return BadRequest("ID inválido.");
         }
-
-        var post = await _context.Posts
-              .Include(p => p.Autor)
-              .Include(c => c.Comentarios).ThenInclude(p => p.Autor)
-              .FirstOrDefaultAsync(m => m.Id == id);
-
-        if (post == null)
+        try
         {
-            return NotFound();
+            var result = await _postService.GetPostAsync(id);
+            if (result == null)
+            {
+                _logger.LogInformation("Post com ID {Id} não encontrado.", id);
+                return NotFound("O post solicitado não foi encontrado.");
+            }
+
+            return Ok(result);
         }
-
-        var postoDetailDto = new PostDetailDto
+        catch (Exception ex)
         {
-            Id = post.Id,
-            Titulo = post.Titulo,
-            Descricao = post.Descricao,
-            DataPublicacao = post.DataPublicacao,
-            Autor = new AutorDto
-            {
-                Id = post.Autor.Id,
-                Email = post.Autor.Email
-            },
-            Comentarios = post.Comentarios.Select(comment => new CommentDetailDto
-            {
-                Id = comment.Id,
-                Comentario = comment.Descricao,
-                Autor = new AutorDto
-                {
-                    Id = comment.Autor.Id,
-                    Email = comment.Autor.Email
-                },
-                DataPublicacao = comment.DataPublicacao
-            }).ToList()
-        };
-
-
-        return Ok(postoDetailDto);
+            _logger.LogError(ex, "Erro ao tentar obter detalhes do post com ID {Id}.", id);
+            return BadRequest("Ocorreu um erro ao processar a solicitação.");
+        }
     }
     [HttpPost]
     [SwaggerOperation(Summary = "Criar um post", Description = "Esse endpoint cria um post.")]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesDefaultResponseType]
-    public async Task<ActionResult<PostListDto>> CreatePost(PostCreateUpdateDto postCreateUpdateDto)
+    public async Task<ActionResult<PostListDto>> CreatePost(PostCreateUpdateDto postCreateDto)
     {
-        if (_context.Posts == null)
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
         {
-            return Problem("Erro ao criar um post, contate o suporte!");
+            _logger.LogWarning("User ID não encontrado ao tentar criar um post.");
+            return Unauthorized("Usuário não autenticado.");
         }
-
         if (!ModelState.IsValid)
         {
-            return ValidationProblem(new ValidationProblemDetails(ModelState)
-            {
-                Title = "Um ou mais erros de validação ocorreram!"
-            });
+            return BadRequest("Dados inválidos para criação do post.");
         }
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-        var post = new Post
+        try
         {
-            Descricao = postCreateUpdateDto.Descricao,
-            AutorId = userId,
-            Titulo = postCreateUpdateDto.Titulo,
-            DataPublicacao = DateTime.Now
-        };
-
-        _context.Posts.Add(post);
-        await _context.SaveChangesAsync();
-        post = await _context.Posts
-            .Include(p => p.Autor)
-             .FirstOrDefaultAsync(p => p.Id == post.Id);
-
-        var postListDto = new PostListDto
+            var model = await _postService.CreatePostAsync(postCreateDto, userId);
+            return CreatedAtAction(nameof(GetPost), new { id = model.Id }, model);
+        }
+        catch (Exception ex)
         {
-            Id = post.Id,
-            Titulo = post.Titulo,
-            Descricao = post.Descricao,
-            DataPublicacao = post.DataPublicacao,
-            Autor = new AutorDto
-            {
-                Id = post.Autor.Id,
-                Email = post.Autor.Email
-            }
-        };
-        return CreatedAtAction(nameof(GetPost), new { id = postListDto.Id }, postListDto);
+            _logger.LogError(ex, "Erro ao criar o post.");
+            return BadRequest("Ocorreu um erro ao processar a solicitação");
+        }
     }
 
     [HttpPut("{id:int}")]
@@ -168,44 +111,26 @@ public class PostsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesDefaultResponseType]
-    public async Task<IActionResult> PutPost(int id, PostCreateUpdateDto postCreateUpdateDto)
+    public async Task<IActionResult> PutPost(int id, PostCreateUpdateDto postUpdateDto)
     {
-        if (_context.Posts == null)
-        {
-            return Problem("Erro ao atualizar o post, contate o suporte!");
-        }
-        var post = await _context.Posts.FindAsync(id);
-
-        if (id != post.Id) return BadRequest();
-        _context.Entry(post).State = EntityState.Modified;
-
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (post.AutorId != userId && !User.IsInRole("Admin"))
-        {
-            return Forbid();
-        }
-
-        post.Titulo = postCreateUpdateDto.Titulo;
-        post.Descricao = postCreateUpdateDto.Descricao;
+        var isAdmin = User.IsInRole("Admin");
 
         try
         {
-            await _context.SaveChangesAsync();
-        }
-        // Tratar exceções de concorrência (2 usuários tentando modificar mesmo produto)
-        catch (DbUpdateConcurrencyException)
-        {
-            if (!PostExists(id))
+            if (await _postService.IsAuthorAsync(id, userId) || isAdmin)
             {
-                return NotFound();
+                await _postService.UpdatePostAsync(postUpdateDto, userId, id);
+                return NoContent();
             }
-            else
-            {
-                throw;
-            }
-        }
+           return Forbid();
 
-        return NoContent();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao atualizar o post.");
+            return BadRequest("Ocorreu um erro ao processar a solicitação");
+        }
     }
 
     [HttpDelete("{id:int}")]
@@ -215,32 +140,24 @@ public class PostsController : ControllerBase
     [ProducesDefaultResponseType]
     public async Task<IActionResult> DeletePost(int id)
     {
-        if (_context.Posts == null)
-        {
-            return Problem("Erro ao deletar um post, contate o suporte!");
-        }
-        if (_context.Posts == null)
-        {
-            return NotFound();
-        }
-
-        var post = await _context.Posts.FindAsync(id);
-
-        if (post == null)
-        {
-            return NotFound();
-        }
-
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (post.AutorId != userId && !User.IsInRole("Admin"))
+        var isAdmin = User.IsInRole("Admin");
+
+        try
         {
+            if (await _postService.IsAuthorAsync(id, userId) || isAdmin)
+            {
+                await _postService.DeletePostAsync(id);
+                return NoContent();
+            }
+
             return Forbid();
         }
-
-        _context.Posts.Remove(post);
-        await _context.SaveChangesAsync();
-
-        return NoContent();
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao deletar o post.");
+            return BadRequest("Ocorreu um erro ao processar a solicitação");
+        }
     }
 
     [HttpPost("{id:int}/comentarios")]
@@ -248,42 +165,36 @@ public class PostsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesDefaultResponseType]
-    public async Task<ActionResult> AddCommentOnPost(int id, CommentCreateUpdateDto CommentCreateUpdateDto)
+    public async Task<ActionResult<CommentDetailDto>> AddCommentOnPost(int id, CommentCreateUpdateDto commentCreateDto)
     {
-        if (_context.Posts == null)
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (string.IsNullOrEmpty(userId))
         {
-            return Problem("Erro ao criar comentário em um post, contate o suporte!");
+            _logger.LogWarning("User ID não encontrado ao tentar adicionar um comentário.");
+            return Unauthorized("Usuário não autenticado.");
         }
-        var post = await _context.Posts.FindAsync(id);
-
-        if (ModelState.IsValid)
+        if (!ModelState.IsValid)
         {
+            return BadRequest("Dados inválidos para adição de comentário ao post.");
+        }
 
-            if (post == null)
+        try
+        {
+            var result = await _postService.AddCommentOnPostAsync(id, userId, commentCreateDto);
+            if (result == null)
             {
-                return NotFound();
+                return NotFound("Post não encontrado para adicionar o comentário.");
             }
-
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-
-            var comentario = new Comentario
-            {
-                Descricao = CommentCreateUpdateDto.Comentario,
-                PostId = id,
-                AutorId = userId,
-                DataPublicacao = DateTime.Now
-            };
-
-            _context.Comentarios.Add(comentario);
-            await _context.SaveChangesAsync();
+            return RedirectToAction("Details", new { id });
         }
-        return Created();
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao adicionar comentário ao post.");
+            return BadRequest("Ocorreu um erro ao processar a solicitação");
+        }
 
-    }
-    private bool PostExists(int id)
-    {
-        return (_context.Posts?.Any(e => e.Id == id)).GetValueOrDefault();
+
     }
 }
 

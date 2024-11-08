@@ -1,4 +1,4 @@
-@model IEnumerable<Blog.Web.ViewModels.PostViewModel>
+@model IEnumerable<Blog.Core.DTOs.Post.PostListDto>
 
 @{
     ViewData["Title"] = "Index";
@@ -28,35 +28,42 @@
         </tr>
     </thead>
     <tbody>
-        @foreach (var item in Model)
+        @if (ViewBag.Message != null)
         {
-            <tr>
-                <td>
-                    @Html.DisplayFor(modelItem => item.Titulo)
-                </td>
-                <td>
-                    @Html.DisplayFor(modelItem => item.Autor.Email)
-                </td>
-                <td>
-                    @Html.DisplayFor(modelItem => item.DataPublicacao)
-                </td>
-                <td>
-                    <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-outline-primary">
-                        <i class="fas fa-edit"></i> Editar
-                    </a>
+            <p>@ViewBag.Message</p>
+        }
+        else
+        {
+            @foreach (var item in Model)
+            {
+                <tr>
+                    <td>
+                        @Html.DisplayFor(modelItem => item.Titulo)
+                    </td>
+                    <td>
+                        @Html.DisplayFor(modelItem => item.Autor.Email)
+                    </td>
+                    <td>
+                        @Html.DisplayFor(modelItem => item.DataPublicacao)
+                    </td>
+                    <td>
+                        <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-outline-primary">
+                            <i class="fas fa-edit"></i> Editar
+                        </a>
 
-                    <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-outline-info">
-                        <i class="fas fa-eye"></i> Detalhes
-                    </a>
+                        <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-outline-info">
+                            <i class="fas fa-eye"></i> Detalhes
+                        </a>
 
-                    <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-outline-danger"
-                        onclick="return confirm('Tem certeza que deseja remover este item?');">
-                        <i class="fas fa-trash-alt"></i> Remover
-                    </a>
+                        <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-outline-danger"
+                            onclick="return confirm('Tem certeza que deseja remover este item?');">
+                            <i class="fas fa-trash-alt"></i> Remover
+                        </a>
 
 
-                </td>
-            </tr>
+                    </td>
+                </tr>
+            }
         }
     </tbody>
 </table>
