@@ -1,4 +1,4 @@
-@model Blog.Web.ViewModels.ComentarioViewModel
+@model Blog.Core.DTOs.Comentario.CommentDetailDto
 
 @{
     ViewData["Title"] = "Delete";
@@ -12,10 +12,10 @@
     <hr />
     <dl class="row">
         <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.Descricao)
+            @Html.DisplayNameFor(model => model.Comentario)
         </dt>
         <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.Descricao)
+            @Html.DisplayFor(model => model.Comentario)
         </dd>
 
         <dt class="col-sm-2">
@@ -28,6 +28,8 @@
 
     <form asp-action="Delete">
         <input type="hidden" asp-for="Id" />
+        <input type="hidden" asp-for="PostId" />
+         <input type="hidden" name="authorId" value="@Model.Autor.Id" />
         <input type="submit" value="Delete" class="btn btn-danger" /> |
         <a asp-controller="Posts" asp-action="Index" class="btn btn-secondary my-4">
             <i class="fas fa-arrow-left"></i> Voltar para a Lista

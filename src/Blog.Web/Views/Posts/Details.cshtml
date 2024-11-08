@@ -1,4 +1,4 @@
-@model Blog.Web.ViewModels.PostViewModel
+@model Blog.Core.DTOs.Post.PostDetailDto
 
 @{
     ViewData["Title"] = "Details";
@@ -35,7 +35,7 @@
                             <strong>@comentario.Autor.Email</strong> <!-- Nome do publicador -->
                             <span class="text-muted">@comentario.DataPublicacao.ToShortDateString()</span>
                             <br />
-                            @comentario.Descricao
+                            @comentario.Comentario                            
                         </div>
 
                         <!-- Ações de editar e remover -->
@@ -65,7 +65,7 @@
     <input type="hidden" asp-for="Id" value="@Model.Id" />   
     <div class="form-group">
         <label for="Texto">Comentário</label>
-        <textarea class="form-control" name="Texto" rows="3" required></textarea>
+        <textarea class="form-control" name="Comentario" rows="3" required></textarea>
     </div>
     <button type="submit" class="btn btn-primary my-1">Enviar</button>
 </form>

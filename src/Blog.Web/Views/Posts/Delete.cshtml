@@ -1,4 +1,4 @@
-@model Blog.Web.ViewModels.PostViewModel
+@model Blog.Core.DTOs.Post.PostDetailDto
 
 @{
     ViewData["Title"] = "Delete";
@@ -33,6 +33,7 @@
 
     <form asp-action="Delete">
         <input type="hidden" asp-for="Id" />
+        <input type="hidden" name="authorId" value="@Model.Autor.Id" />
 
         <button type="submit" class="btn btn-danger">
             <i class="fas fa-trash-alt"></i> Deletar

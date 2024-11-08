@@ -1,31 +1,14 @@
 # ADR
 
-## Pauta : IDP
-Foi levantando ....
+## Pauta : Design camada "data"
+Após a criação da camada "Data" foi percebido a necessidade de migrar serviços em comum entre API e WEB (valdiações) para essa camada, portanto seria necessário alterar o nome do projeto de .Data para .Core, o que iria contra o que foi definido como template na documentação de requisitos informada.
 
 ### Decisão
-Optamos por utilizar o **SQL Server** como banco de dados relacional para o projeto.
+Optei por manter o desgin .Data para respeitar o template definido nos requisitos e criar uma organização de "Core" dentro dentro do projeto "Data".
+O Core carregará as validações em comum entre os projetos.
 
    
-2. **PostgreSQL**:
-   - Considerado por suas fortes capacidades ACID e por ser open-source.
-   - Rejeitado devido a preocupações com o suporte em nosso ambiente atual e necessidade de integrações com outros sistemas legados que já utilizam SQL Server.
-
 ### Consequências
-- **Positivas**: Utilizando SQL Server, temos uma forte integração com o Entity Framework Core e uma curva de aprendizado reduzida para a equipe.
-- **Negativas**: Custos mais elevados em comparação com opções open-source como PostgreSQL e MySQL.
+- **Positivas**: Respeitar o template definido nos requisitos.
+- **Negativas**: Design "estranho".
 
-## Pauta : Design de retorno createPost
-Foi levantando ....
-
-### Decisão
-Optamos por utilizar o **SQL Server** como banco de dados relacional para o projeto.
-
-   
-2. **PostgreSQL**:
-   - Considerado por suas fortes capacidades ACID e por ser open-source.
-   - Rejeitado devido a preocupações com o suporte em nosso ambiente atual e necessidade de integrações com outros sistemas legados que já utilizam SQL Server.
-
-### Consequências
-- **Positivas**: Utilizando SQL Server, temos uma forte integração com o Entity Framework Core e uma curva de aprendizado reduzida para a equipe.
-- **Negativas**: Custos mais elevados em comparação com opções open-source como PostgreSQL e MySQL.

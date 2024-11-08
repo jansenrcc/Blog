@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Blog.Data.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20241011001907_primeiraMigracao")]
-    partial class primeiraMigracao
+    [Migration("20241102185840_addNameColum")]
+    partial class addNameColum
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -24,6 +24,24 @@ namespace Blog.Data.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
+
+            modelBuilder.Entity("Blog.Data.Models.Autor", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Autores", (string)null);
+                });
 
             modelBuilder.Entity("Blog.Data.Models.Comentario", b =>
                 {
@@ -284,9 +302,20 @@ namespace Blog.Data.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("Blog.Data.Models.Autor", b =>
+                {
+                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", "User")
+                        .WithOne()
+                        .HasForeignKey("Blog.Data.Models.Autor", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Blog.Data.Models.Comentario", b =>
                 {
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", "Autor")
+                    b.HasOne("Blog.Data.Models.Autor", "Autor")
                         .WithMany()
                         .HasForeignKey("AutorId")
                         .OnDelete(DeleteBehavior.Restrict);
@@ -304,7 +333,7 @@ namespace Blog.Data.Migrations
 
             modelBuilder.Entity("Blog.Data.Models.Post", b =>
                 {
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", "Autor")
+                    b.HasOne("Blog.Data.Models.Autor", "Autor")
                         .WithMany()
                         .HasForeignKey("AutorId")
                         .OnDelete(DeleteBehavior.Restrict);

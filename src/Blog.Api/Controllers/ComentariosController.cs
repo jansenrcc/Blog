@@ -1,8 +1,7 @@
-using Blog.Api.DTOs.Comentarios;
-using Blog.Data.Data;
+using Blog.Core.DTOs.Comentario;
+using Blog.Core.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Swashbuckle.AspNetCore.Annotations;
 using System.Security.Claims;
 
@@ -14,11 +13,14 @@ namespace Blog.Api.Controllers;
 
 public class ComentariosController : ControllerBase
 {
-    private readonly ApplicationDbContext _context;
+    private readonly ICommentService _commentService;
+    private readonly ILogger<ComentariosController> _logger;
 
-    public ComentariosController(ApplicationDbContext context)
+    public ComentariosController(ICommentService commentService, ILogger<ComentariosController> logger)
     {
-        _context = context;
+
+        _commentService = commentService;
+        _logger = logger;
     }
 
     [HttpPut("{id:int}")]
@@ -27,39 +29,26 @@ public class ComentariosController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesDefaultResponseType]
-    public async Task<IActionResult> PutComment(int id, CommentCreateUpdateDto commentCreateUpdateDto)
+    public async Task<IActionResult> PutComment(int id, CommentCreateUpdateDto commentUpdateDto)
     {
-        var comentario = await _context.Comentarios.FindAsync(id);
-
-        if (id != comentario.Id) return BadRequest();
-        _context.Entry(comentario).State = EntityState.Modified;
-
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (comentario.AutorId != userId && !User.IsInRole("Admin"))
-        {
-            return Forbid();
-        }
-
-        comentario.Descricao = commentCreateUpdateDto.Comentario;
+        var isAdmin = User.IsInRole("Admin");
 
         try
         {
-            await _context.SaveChangesAsync();
-        }
-        // Tratar exceções de concorrência (2 usuários tentando modificar mesmo comentário)
-        catch (DbUpdateConcurrencyException)
-        {
-            if (!CommentExists(id))
+            if (await _commentService.IsAuthorAsync(id, userId) || isAdmin)
             {
-                return NotFound();
+                await _commentService.UpdateCommentAsync(commentUpdateDto, userId, id);
+                return NoContent();
             }
-            else
-            {
-                throw;
-            }
-        }
 
-        return NoContent();
+            return Forbid();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao atualizar o comentário.");
+            return BadRequest("Ocorreu um erro ao processar a solicitação");
+        }
     }
 
     [HttpDelete("{id:int}")]
@@ -69,33 +58,23 @@ public class ComentariosController : ControllerBase
     [ProducesDefaultResponseType]
     public async Task<IActionResult> DeleteComment(int id)
     {
-        if (_context.Posts == null)
-        {
-            return NotFound();
-        }
-
-        var comentario = await _context.Comentarios.FindAsync(id);
-
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (comentario.AutorId != userId && !User.IsInRole("Admin"))
+        var isAdmin = User.IsInRole("Admin");
+
+        try
         {
+            if (await _commentService.IsAuthorAsync(id, userId) || isAdmin)
+            {
+                await _commentService.DeleteCommentAsync(id);
+                return NoContent();
+            }
             return Forbid();
         }
 
-        if (comentario == null)
+        catch (Exception ex)
         {
-            return NotFound();
+            _logger.LogError(ex, "Erro ao deletar o comentário.");
+            return BadRequest("Ocorreu um erro ao processar a solicitação");
         }
-
-        _context.Comentarios.Remove(comentario);
-        await _context.SaveChangesAsync();
-
-        return NoContent();
     }
-
-    private bool CommentExists(int id)
-    {
-        return (_context.Posts?.Any(e => e.Id == id)).GetValueOrDefault();
-    }
-
 }

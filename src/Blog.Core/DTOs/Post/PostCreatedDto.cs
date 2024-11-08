@@ -1,9 +1,9 @@
 using System;
-using Blog.Api.DTOs.Autor;
+using Blog.Core.DTOs.Autor;
 
-namespace Blog.Api.DTOs.Posts;
+namespace Blog.Core.DTOs.Post;
 
-public class PostListDto
+public class PostCreatedDto
 {
     public int Id { get; set; }
     public string Titulo { get; set; }

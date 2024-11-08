@@ -15,6 +15,7 @@ public class ApplicationDbContext : IdentityDbContext
   
     public DbSet<Post> Posts { get; set; }
     public DbSet<Comentario> Comentarios { get; set; }
+    public DbSet<Autor> Autores { get; set; }
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -23,6 +24,7 @@ public class ApplicationDbContext : IdentityDbContext
        
         modelBuilder.ApplyConfiguration(new ComentarioConfiguration());
         modelBuilder.ApplyConfiguration(new PostConfiguration());       
+        modelBuilder.ApplyConfiguration(new AutorConfiguration());       
     }
 
 }

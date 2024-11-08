@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Blog.Data.Migrations
 {
     /// <inheritdoc />
-    public partial class primeiraMigracao : Migration
+    public partial class InitialCreate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -157,23 +157,41 @@ namespace Blog.Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Autores",
+                columns: table => new
+                {
+                    Id = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    Email = table.Column<string>(type: "nvarchar(max)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Autores", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Autores_AspNetUsers_Id",
+                        column: x => x.Id,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Posts",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    Descricao = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
-                    AutorId = table.Column<string>(type: "nvarchar(450)", nullable: true),
                     Titulo = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    DataPublicacao = table.Column<DateTime>(type: "datetime2", nullable: false)
+                    Descricao = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
+                    DataPublicacao = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    AutorId = table.Column<string>(type: "nvarchar(450)", nullable: true)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Posts", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_Posts_AspNetUsers_AutorId",
+                        name: "FK_Posts_Autores_AutorId",
                         column: x => x.AutorId,
-                        principalTable: "AspNetUsers",
+                        principalTable: "Autores",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
                 });
@@ -185,17 +203,17 @@ namespace Blog.Data.Migrations
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     Descricao = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
+                    DataPublicacao = table.Column<DateTime>(type: "datetime2", nullable: false),
                     AutorId = table.Column<string>(type: "nvarchar(450)", nullable: true),
-                    PostId = table.Column<int>(type: "int", nullable: false),
-                    DataPublicacao = table.Column<DateTime>(type: "datetime2", nullable: false)
+                    PostId = table.Column<int>(type: "int", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Comentarios", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_Comentarios_AspNetUsers_AutorId",
+                        name: "FK_Comentarios_Autores_AutorId",
                         column: x => x.AutorId,
-                        principalTable: "AspNetUsers",
+                        principalTable: "Autores",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
@@ -287,6 +305,9 @@ namespace Blog.Data.Migrations
 
             migrationBuilder.DropTable(
                 name: "Posts");
+
+            migrationBuilder.DropTable(
+                name: "Autores");
 
             migrationBuilder.DropTable(
                 name: "AspNetUsers");

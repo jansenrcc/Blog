@@ -1,148 +1,104 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Rendering;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
-using Blog.Data.Data;
-using Blog.Data.Models;
-using Blog.Web.ViewModels;
+using Blog.Core.Interfaces;
+using Blog.Core.DTOs.Comentario;
+
 
 namespace Blog.Web.Controllers
 {
     [Authorize]
     public class ComentariosController : Controller
     {
-        private readonly ApplicationDbContext _context;
 
-        public ComentariosController(ApplicationDbContext context)
+        private readonly ICommentService _commentService;
+        private readonly ILogger<ComentariosController> _logger;
+
+        public ComentariosController(ICommentService commentService, ILogger<ComentariosController> logger)
         {
-            _context = context;
+
+            _commentService = commentService;
+            _logger = logger;
         }
 
 
-        public async Task<IActionResult> Edit(int? id)
+        public async Task<IActionResult> Edit(int id)
         {
-            if (id == null)
+            var model = await _commentService.GetCommentAsync(id);
+            if (model == null)
             {
-                return NotFound();
+                return NotFound("Comentário não encontrado.");
             }
-
-            var comentario = await _context.Comentarios.FindAsync(id);
-            if (comentario == null)
-            {
-                return NotFound();
-            }
-
-            var comentarioViewModel = new ComentarioViewModel
-            {
-                Id = comentario.Id,
-                Descricao = comentario.Descricao,
-                DataPublicacao = comentario.DataPublicacao,
-                PostId = comentario.PostId
-
-            };
-
-            return View(comentarioViewModel);
+            return View(model);
         }
+
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, ComentarioViewModel comentarioViewModel)
+        public async Task<IActionResult> Edit(int id, CommentCreateUpdateDto commentUpdateDto, int postId)
         {
-            if (id != comentarioViewModel.Id)
+            if (!ModelState.IsValid)
             {
-                return NotFound();
+                return View(commentUpdateDto);
             }
 
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (comentarioViewModel.AutorId != userId && !User.IsInRole("Admin"))
+            if (string.IsNullOrEmpty(userId))
             {
-                return Forbid();
+                _logger.LogWarning("User ID não encontrado ao tentar editar o comentário.");
+                return Unauthorized("Usuário não autenticado.");
             }
 
-            if (ModelState.IsValid)
+            try
             {
-                try
-                {
-                    var novoComentario = await _context.Comentarios.FindAsync(comentarioViewModel.Id);
-
-                    if (novoComentario == null)
-                    {
-                        return NotFound();
-                    }
-                    novoComentario.Descricao = comentarioViewModel.Descricao;
-                    novoComentario.AutorId = userId;
-                    novoComentario.DataPublicacao = DateTime.Now;
-
-                    _context.Update(novoComentario);
-                    await _context.SaveChangesAsync();
-                }
-                catch (DbUpdateConcurrencyException)
-                {
-                    if (!ComentarioExists(comentarioViewModel.Id))
-                    {
-                        return NotFound();
-                    }
-                    else
-                    {
-                        throw;
-                    }
-                }
-                return RedirectToAction("Details", "Posts", new { id = comentarioViewModel.PostId });
+                await _commentService.UpdateCommentAsync(commentUpdateDto, userId, id);
+                return RedirectToAction("Details", "Posts", new { id = postId });
             }
-
-            return View(comentarioViewModel);
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erro ao atualizar o comentário com ID {CommentId} para o post {PostId}.", id, postId);
+                return View("Error");
+            }
         }
 
-        public async Task<IActionResult> Delete(int? id)
+        public async Task<IActionResult> Delete(int id)
         {
-            if (id == null)
+            var model = await _commentService.GetCommentAsync(id);
+            if (model == null)
             {
-                return NotFound();
+                return NotFound("Comentário não encontrado.");
             }
-
-            var comentario = await _context.Comentarios
-                .Include(c => c.Post)
-                .FirstOrDefaultAsync(m => m.Id == id);
-            if (comentario == null)
-            {
-                return NotFound();
-            }
-
-            var comentarioViewModel = new ComentarioViewModel
-            {
-                Descricao = comentario.Descricao,
-                DataPublicacao = comentario.DataPublicacao
-            };
-
-            return View(comentarioViewModel);
+            return View(model);
         }
 
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> DeleteConfirmed(int id)
+        public async Task<IActionResult> DeleteConfirmed(int id, int postId, string authorId)
         {
-            var comentario = await _context.Comentarios.FindAsync(id);
-            var postId = comentario.PostId;
-
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (comentario.AutorId != userId && !User.IsInRole("Admin"))
+            var isAdmin = User.IsInRole("Admin");
+       
+            var result = await _commentService.GetCommentAsync(id);
+            if (result == null)
+            {
+                return NotFound("Comentário não encontrado para exclusão.");
+            }
+
+            if (!isAdmin && authorId != userId)
             {
                 return Forbid();
             }
 
-            if (comentario != null)
+            try
             {
-                _context.Comentarios.Remove(comentario);
+                await _commentService.DeleteCommentAsync(id);
+                return RedirectToAction("Details", "Posts", new { id = postId });
             }
-
-            await _context.SaveChangesAsync();
-            return RedirectToAction("Details", "Posts", new { id = postId });
-        }
-
-        private bool ComentarioExists(int id)
-        {
-            return _context.Comentarios.Any(e => e.Id == id);
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erro ao excluir o comentário com ID {CommentId} para o post {PostId}.", id, postId);
+                return View("Error");
+            }
         }
     }
 }

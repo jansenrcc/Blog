@@ -1,11 +1,6 @@
-using Blog.Api.DTOs.Auth;
-using Microsoft.AspNetCore.Identity;
+using Blog.Core.DTOs.Auth;
+using Blog.Core.Interfaces;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Options;
-using Microsoft.IdentityModel.Tokens;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
 
 namespace ApiFuncional.Controllers
 {
@@ -13,91 +8,44 @@ namespace ApiFuncional.Controllers
     [Route("api/conta")]
     public class AuthController : ControllerBase
     {
-        private readonly SignInManager<IdentityUser> _signInManager;
-        private readonly UserManager<IdentityUser> _userManager;
-        private readonly JwtSettings _jwtSettings;
+        private readonly IUserService _userService;
 
-        public AuthController(SignInManager<IdentityUser> signInManager,
-                              UserManager<IdentityUser> userManager,
-                              IOptions<JwtSettings> jwtSettings)
+        public AuthController(IUserService userService)
         {
-            _signInManager = signInManager;
-            _userManager = userManager;
-            _jwtSettings = jwtSettings.Value;
+            _userService = userService;
         }
 
         [HttpPost("registrar")]
+        [ProducesResponseType(StatusCodes.Status201Created)]
+        [ProducesResponseType(typeof(Microsoft.AspNetCore.Mvc.ModelBinding.ModelStateDictionary), StatusCodes.Status400BadRequest)]
+        [ProducesDefaultResponseType]
+        [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<ActionResult> Registrar(RegisterUserDto registerUser)
         {
-            if (!ModelState.IsValid) return ValidationProblem(ModelState);
-
-            var user = new IdentityUser
+            var result = await _userService.RegisterUserAsync(registerUser);
+            if (result.Result.Succeeded)
             {
-                UserName = registerUser.Email,
-                Email = registerUser.Email,
-                EmailConfirmed = true
-            };
-
-            var result = await _userManager.CreateAsync(user, registerUser.Password);
-
-            if (result.Succeeded)
-            {
-                await _signInManager.SignInAsync(user, false);
-                return Ok(await GerarJwt(user.Email));
+                return Ok(new {result.Token });
             }
 
-            return Problem("Falha ao registrar o usuário");
+            return BadRequest("Falha ao registrar o usuário");
         }
 
         [HttpPost("login")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(Microsoft.AspNetCore.Mvc.ModelBinding.ModelStateDictionary), StatusCodes.Status400BadRequest)]
+        [ProducesDefaultResponseType]
         public async Task<ActionResult> Login(LoginUserDto loginUser)
         {
-            if (!ModelState.IsValid) return ValidationProblem(ModelState);
-
-            var result = await _signInManager.PasswordSignInAsync(loginUser.Email, loginUser.Password, false, true);
-
-            if (result.Succeeded)
+            try
             {
-                return Ok(await GerarJwt(loginUser.Email));
+                var result = await _userService.ValidateUserAsync(loginUser);
+                return Ok(result);
             }
-
-            return Problem("Usuário ou senha incorretos");
-        }
-
-        private async Task<string> GerarJwt(string email)
-        {
-            var user = await _userManager.FindByEmailAsync(email);
-            var roles = await _userManager.GetRolesAsync(user);
-
-            var claims = new List<Claim>
+            catch
             {
-                new Claim(ClaimTypes.Name, user.UserName),
-                new Claim(ClaimTypes.NameIdentifier, user.Id),
-                new Claim(ClaimTypes.Email, user.Email )
-            };
-
-            // Adicionar roles como claims
-            foreach (var role in roles)
-            {
-                claims.Add(new Claim(ClaimTypes.Role, role));
-                
+                return BadRequest("Usuário ou senha incorretos");
             }
-
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var key = Encoding.ASCII.GetBytes(_jwtSettings.Segredo);
-
-            var token = tokenHandler.CreateToken(new SecurityTokenDescriptor
-            {
-                Subject = new ClaimsIdentity(claims),
-                Issuer = _jwtSettings.Emissor,
-                Audience = _jwtSettings.Audiencia,
-                Expires = DateTime.UtcNow.AddHours(_jwtSettings.ExpiracaoHoras),
-                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
-            });
-
-            var encodedToken = tokenHandler.WriteToken(token);
-
-            return encodedToken;
         }
     }
 }
