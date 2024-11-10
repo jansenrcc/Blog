@@ -25,7 +25,7 @@ namespace ApiFuncional.Controllers
             var result = await _userService.RegisterUserAsync(registerUser);
             if (result.Result.Succeeded)
             {
-                return Ok(new {result.Token });
+                return Created();
             }
 
             return BadRequest("Falha ao registrar o usuário");

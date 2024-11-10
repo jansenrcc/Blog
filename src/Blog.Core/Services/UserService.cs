@@ -23,11 +23,10 @@ public class UserService : IUserService
         _context = context;
         _jwtSettings = jwtSettings.Value;
     }
-    public async Task<(IdentityResult Result, IdentityUser User, string Token)> RegisterUserAsync(RegisterUserDto dto)
+    public async Task<(IdentityResult Result, IdentityUser User)> RegisterUserAsync(RegisterUserDto dto)
     {
         var user = new IdentityUser { UserName = dto.Nome, Email = dto.Email };
-        var result = await _userManager.CreateAsync(user, dto.Password);
-        string token = null;
+        var result = await _userManager.CreateAsync(user, dto.Password);       
         if (result.Succeeded)
         {
             // Adiciona o Autor associado ao usuário criado
@@ -41,9 +40,9 @@ public class UserService : IUserService
             _context.Autores.Add(autor);
             await _context.SaveChangesAsync();
 
-            token = await GerarJwt(user.Email);
+           
         }
-        return (result, result.Succeeded ? user : null, token);
+        return (result, result.Succeeded ? user : null);
 
     }
     public async Task<string> ValidateUserAsync(LoginUserDto loginUser)

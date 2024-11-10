@@ -78,6 +78,7 @@ public class PostService : IPostService
             Comentarios = post.Comentarios.Select(comment => new CommentDetailDto
             {
                 Id = comment.Id,
+                PostId = comment.PostId,
                 Comentario = comment.Descricao,
                 Autor = new AutorDto
                 {

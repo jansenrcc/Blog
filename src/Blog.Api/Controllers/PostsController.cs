@@ -186,7 +186,7 @@ public class PostsController : ControllerBase
             {
                 return NotFound("Post não encontrado para adicionar o comentário.");
             }
-            return RedirectToAction("Details", new { id });
+            return RedirectToAction("GetPost", new { id });
         }
         catch (Exception ex)
         {

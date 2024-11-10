@@ -2,8 +2,6 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 #nullable disable
 
-using System.Text;
-using System.Text.Encodings.Web;
 using Blog.Core.DTOs.Auth;
 using Blog.Core.Interfaces;
 using Microsoft.AspNetCore.Authentication;
@@ -11,7 +9,6 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.AspNetCore.WebUtilities;
 
 namespace Blog.Web.Areas.Identity.Pages.Account
 {
@@ -62,7 +59,7 @@ namespace Blog.Web.Areas.Identity.Pages.Account
             if (ModelState.IsValid)
             {
                 // Desconstrói a tupla para obter o resultado e o usuário criado
-                var (result, user, token) = await _userService.RegisterUserAsync(Input);
+                var (result, user) = await _userService.RegisterUserAsync(Input);
 
                 if (result.Succeeded)
                 {
